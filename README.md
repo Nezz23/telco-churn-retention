@@ -1,5 +1,7 @@
 # Telco Churn: Who Is Worth Saving?
 
+**Live API:** https://telco-churn-retention.onrender.com (free tier: the first request after idle takes ~30 s to wake)
+
 Most churn projects stop at "will this customer leave?" This one answers the question a retention team actually has: **which customers are worth an offer, and why are they at risk?**
 
 An XGBoost model scores churn risk. Expected-value targeting turns that score into a send/don't-send decision. Per-customer SHAP reasons explain each score. A FastAPI service serves all three, and CI retrains and gates the model every week.
