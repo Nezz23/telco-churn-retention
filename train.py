@@ -3,7 +3,6 @@ import json
 from pathlib import Path
 
 import joblib
-import mlflow
 import numpy as np
 import pandas as pd
 from sklearn.calibration import calibration_curve
@@ -101,6 +100,8 @@ def main():
         "assumptions": {"offer_cost": OFFER_COST, "save_rate": SAVE_RATE, "horizon_months": HORIZON},
         "n_customers": len(df), "n_test": len(X_te),
     }
+
+    import mlflow  # imported here so the API server does not load it
 
     mlflow.set_tracking_uri("sqlite:///mlflow.db")
     mlflow.set_experiment("telco-churn")

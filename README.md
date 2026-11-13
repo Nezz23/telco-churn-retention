@@ -60,6 +60,12 @@ The policy never loses money across this range. Blanket outreach loses money unl
 | 100 | 3,751 | 27 ms |
 | 1,000 | 16,282 | 61 ms |
 
+## Deploy
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Nezz23/telco-churn-retention)
+
+`render.yaml` deploys the Docker image to Render's free tier.
+
 ## Run it
 
 ```bash
