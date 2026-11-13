@@ -4,6 +4,7 @@ from typing import Annotated, Literal
 import joblib
 import pandas as pd
 from fastapi import Body, FastAPI
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
 from train import FEATURES, OFFER_COST, SAVE_RATE, expected_value, reasons
@@ -36,6 +37,11 @@ class Customer(BaseModel):
 
 pipe = joblib.load("model/model.joblib")
 app = FastAPI(title="Telco Churn Retention API")
+
+
+@app.get("/", include_in_schema=False)
+def home():
+    return RedirectResponse("/docs")  # the live demo opens on the interactive API page
 
 
 @app.get("/health")

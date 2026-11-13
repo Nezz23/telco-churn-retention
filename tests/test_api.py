@@ -53,3 +53,8 @@ def test_retrained_model_still_beats_contacting_everyone():
     m = json.load(open("model/metrics.json"))
     assert m["test_roc_auc"] >= 0.80
     assert m["profit"]["model_expected_value"] > max(0, m["profit"]["contact_everyone"])
+
+
+def test_home_page_opens_the_interactive_docs():
+    r = client.get("/", follow_redirects=False)
+    assert r.status_code == 307 and r.headers["location"] == "/docs"
