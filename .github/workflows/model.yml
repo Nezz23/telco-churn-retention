@@ -19,8 +19,11 @@ jobs:
   model:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Require MODEL_PR_TOKEN (see the comment on the pull-request step)
+        env: { TOKEN: "${{ secrets.MODEL_PR_TOKEN }}" }
+        run: '[ -n "$TOKEN" ] || { echo "::error::Set the MODEL_PR_TOKEN repository secret"; exit 1; }'
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.14"  # same as the Python that trained the committed artifact
           cache: pip
@@ -34,10 +37,10 @@ jobs:
         run: python -m churn.registry rollback | tee -a "$GITHUB_STEP_SUMMARY" && python -m churn.card
       - run: pytest -q
       # A PR opened with the default GITHUB_TOKEN does not trigger ci.yml, so the container smoke test would never run on
-      # it. MODEL_PR_TOKEN (fine-grained PAT: contents + pull requests on this repo) makes CI run on the model PR.
-      - uses: peter-evans/create-pull-request@v7
+      # it. MODEL_PR_TOKEN (fine-grained PAT: contents + pull requests on this repo) is required: no silent fallback.
+      - uses: peter-evans/create-pull-request@v8
         with:
-          token: ${{ secrets.MODEL_PR_TOKEN || github.token }}
+          token: ${{ secrets.MODEL_PR_TOKEN }}
           branch: model/${{ inputs.action || 'retrain' }}-${{ github.run_id }}
           title: "Model ${{ inputs.action || 'retrain' }}: run ${{ github.run_id }}"
           body: "Gate results and metrics: see the workflow run summary and docs/model_card.md. Merge to deploy."
