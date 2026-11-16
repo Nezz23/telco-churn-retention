@@ -1,24 +1,18 @@
-import json
-
+import numpy as np
+import pytest
+from conftest import LOYAL, RISKY
 from fastapi.testclient import TestClient
 
-from app import app
-from train import load
+from churn import registry
+from churn.api import app
 
 client = TestClient(app)
-X, y, _ = load()
-predict = lambda rows: client.post("/predict", json=rows).json()
 
-# A textbook flight risk: new, month-to-month, fibre, no support, paying by electronic check.
-RISKY = {"SeniorCitizen": 1, "tenure": 1, "MonthlyCharges": 95.0, "TotalCharges": 95.0, "gender": "Female",
-         "Partner": "No", "Dependents": "No", "PhoneService": "Yes", "MultipleLines": "No",
-         "InternetService": "Fiber optic", "OnlineSecurity": "No", "OnlineBackup": "No", "DeviceProtection": "No",
-         "TechSupport": "No", "StreamingTV": "No", "StreamingMovies": "No", "Contract": "Month-to-month",
-         "PaperlessBilling": "Yes", "PaymentMethod": "Electronic check"}
-# A loyal customer: six years in, two-year contract, automatic payment.
-LOYAL = RISKY | {"SeniorCitizen": 0, "tenure": 72, "TotalCharges": 6840.0, "Partner": "Yes", "Dependents": "Yes",
-                 "OnlineSecurity": "Yes", "TechSupport": "Yes", "Contract": "Two year",
-                 "PaymentMethod": "Credit card (automatic)"}
+
+def predict(rows):
+    r = client.post("/predict", json=rows)
+    assert r.status_code == 200, r.text
+    return r.json()
 
 
 def test_flight_risk_gets_an_offer_and_loyal_customer_does_not():
@@ -29,32 +23,63 @@ def test_flight_risk_gets_an_offer_and_loyal_customer_does_not():
 
 def test_cheap_plan_is_not_worth_the_offer_even_at_high_risk():
     # $20/month x 12 x 30% save rate = $72 at best, below the $100 offer cost.
-    (cheap,) = predict([RISKY | {"MonthlyCharges": 20.0, "TotalCharges": 20.0}])
-    assert not cheap["send_offer"]
+    (cheap,) = predict([RISKY | {"MonthlyCharges": 20.0}])
+    assert not cheap["send_offer"] and cheap["expected_value"] < 0
 
 
 def test_reasons_name_what_makes_the_customer_risky():
     (risky,) = predict([RISKY])
-    assert "Contract=Month-to-month" in risky["top_reasons"] or "tenure=1" in risky["top_reasons"]
+    names = {r["feature"] for r in risky["top_reasons"]}
+    assert names & {"Contract", "tenure"}
+    assert all(r["contribution"] > 0 for r in risky["top_reasons"])
 
 
-def test_offers_go_mostly_to_customers_who_actually_churned():
-    churners = sum(r["send_offer"] for r in predict(X[y == 1].head(300).to_dict("records")))
-    stayers = sum(r["send_offer"] for r in predict(X[y == 0].head(300).to_dict("records")))
-    assert churners > 3 * stayers
+def test_raw_billing_export_rows_are_accepted_and_ids_echoed(csv_rows):
+    out = predict(csv_rows[:50])
+    assert [o["customerID"] for o in out] == [r["customerID"] for r in csv_rows[:50]]
 
 
-def test_rejects_bad_input():
-    assert client.post("/predict", json=[RISKY | {"Contract": "Forever"}]).status_code == 422
-    assert client.post("/predict", json=[RISKY | {"tenure": -1}]).status_code == 422
+def test_offers_go_mostly_to_customers_who_actually_churned(csv_rows):
+    churners = [r for r in csv_rows if r["Churn"] == "Yes"][:300]
+    stayers = [r for r in csv_rows if r["Churn"] == "No"][:300]
+    assert sum(o["send_offer"] for o in predict(churners)) > 3 * sum(o["send_offer"] for o in predict(stayers))
 
 
-def test_retrained_model_still_beats_contacting_everyone():
-    m = json.load(open("model/metrics.json"))
-    assert m["test_roc_auc"] >= 0.80
-    assert m["profit"]["model_expected_value"] > max(0, m["profit"]["contact_everyone"])
+@pytest.mark.parametrize("bad", [{"Contract": "Forever"}, {"tenure": -1}, {"MonthlyCharges": "lots"}])
+def test_rejects_bad_input(bad):
+    assert client.post("/predict", json=[RISKY | bad]).status_code == 422
 
 
-def test_home_page_opens_the_interactive_docs():
-    r = client.get("/", follow_redirects=False)
-    assert r.status_code == 307 and r.headers["location"] == "/docs"
+def test_rejects_empty_batch():
+    assert client.post("/predict", json=[]).status_code == 422
+
+
+def test_explanation_adds_up_to_the_raw_score():
+    e = client.post("/explain", json=RISKY).json()
+    log_odds = e["base_log_odds"] + sum(c["contribution"] for c in e["contributions"])
+    assert abs(1 / (1 + np.exp(-log_odds)) - e["raw_probability"]) < 1e-3
+    assert e["send_offer"] == (e["expected_value"] > e["margin"])
+
+
+def test_drift_check_is_quiet_on_real_customers_and_loud_on_shifted_ones(csv_rows):
+    assert client.post("/drift", json=csv_rows[:1000]).json()["status"] == "stable"
+    shifted = [r | {"MonthlyCharges": r["MonthlyCharges"] * 1.5, "Contract": "Month-to-month"} for r in csv_rows[:1000]]
+    assert client.post("/drift", json=shifted).json()["status"] == "major"
+
+
+def test_health_reports_the_registered_champion():
+    h = client.get("/health").json()
+    ix = registry.index()
+    assert h["model_version"] == ix["champion"]
+    assert h["artifact_sha256"] == registry.sha256(registry.ROOT / ix["champion"] / "model.joblib")
+
+
+def test_ops_records_latency_for_scoring_routes():
+    predict([RISKY])
+    route = client.get("/ops").json()["routes"]["/predict"]
+    assert route["requests"] >= 1 and route["p50_ms"] > 0
+
+
+def test_home_page_serves_the_app():
+    r = client.get("/")
+    assert r.status_code == 200 and "text/html" in r.headers["content-type"]

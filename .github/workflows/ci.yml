@@ -2,26 +2,36 @@ name: ci
 on:
   push:
   pull_request:
-  schedule:
-    - cron: "0 6 * * 1"  # weekly retrain + quality gate
 jobs:
-  train-test-build:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
-      - run: pip install -r requirements.txt
-      - run: python train.py
+          python-version: "3.14"  # same as the Python that trained the committed artifact
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check . && ruff format --check churn scripts tests
+      - run: python -m churn.registry verify  # the champion's bytes match their registered SHA-256
       - run: pytest -q
-      - uses: actions/upload-artifact@v4
-        with:
-          name: model
-          path: model/
+
+  container:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       - run: docker build -t telco-churn .
-      - name: Smoke-test the container
+      - name: Smoke-test the image serves the registered champion
         run: |
           docker run -d -p 8000:8000 --name api telco-churn
           for i in $(seq 30); do curl -sf localhost:8000/health && break; sleep 2; done
-          curl -sf localhost:8000/health
+          champion=$(python3 -c "import json; print(json.load(open('models/registry.json'))['champion'])")
+          curl -sf localhost:8000/health | python3 -c "import json,sys; h=json.load(sys.stdin); assert h['model_version']=='$champion', h"
+          head -6 data/telco.csv | python3 -c "import csv,json,sys; print(json.dumps(list(csv.DictReader(sys.stdin))))" \
+            | sed -E 's/"(SeniorCitizen|tenure)": "([0-9]+)"/"\1": \2/g' \
+            | curl -sf localhost:8000/predict -H 'content-type: application/json' -d @- | python3 -c "import json,sys; assert len(json.load(sys.stdin))==5"
+          curl -sf localhost:8000/ | grep -qi "<html"
+      - if: failure()
+        run: docker logs api
