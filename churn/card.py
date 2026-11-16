@@ -65,6 +65,9 @@ def model_card(r):
         lines.append(f"| {k}{' **(chosen)**' if k == chosen else ''} | {c['cv_log_loss']:.4f} | {note} |")
     lines += [
         "",
+        "Optuna's best value is the minimum over many trials, so it is optimistically biased against a single run like "
+        "`xgboost_default`; the paired test comparison below is the unbiased check.",
+        "",
         "## Calibration and decision threshold (calibration split only)",
         f"Calibrator chosen by 5-fold CV log loss: **{cal['method']}** "
         f"({', '.join(f'{k} {v:.4f}' for k, v in cal['cv_log_loss'].items())}). "
@@ -72,7 +75,9 @@ def model_card(r):
         "",
         f"Decision rule: contact when expected value = P(churn) × save rate × {r['economics']['horizon']} × monthly bill − offer cost "
         f"exceeds a margin. The margin was tuned on cross-fitted calibrated probabilities: **{_money(r['threshold']['margin'])}** "
-        "($0 is the Bayes-optimal margin for perfectly calibrated probabilities). "
+        "($0 is the Bayes-optimal margin for perfectly calibrated probabilities; a tuned margin replaces it only if its gain "
+        f"has a paired-bootstrap 95% lower bound above zero. Best grid margin {_money(r['threshold']['margin_test']['best_margin'])}: "
+        f"gain {_money(r['threshold']['margin_test']['gain_over_zero'])}, lower bound {_money(r['threshold']['margin_test']['gain_ci_low'])}). "
         f"Test profit at the tuned margin: {_money(r['threshold']['test_profit_at_tuned_margin'])}; "
         f"at $0: {_money(r['threshold']['test_profit_at_zero_margin'])}.",
         "",
@@ -80,6 +85,10 @@ def model_card(r):
         "so read them as conservative.",
         "",
         "## Test performance (95% paired-bootstrap CIs, 2,000 resamples)",
+        "",
+        "The test customers are fixed by the hash split, so each training run touches them once, but every promotion "
+        "decision is made on the same customers. Over many retrains that reuse erodes their independence; with 1,395 "
+        "customers a separate gate split would cost more precision than it buys.",
         "",
         "| Model | ROC-AUC | PR-AUC | Log loss | Brier | ECE | Profit |",
         "|---|---|---|---|---|---|---|",

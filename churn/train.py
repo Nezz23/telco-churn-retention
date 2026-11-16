@@ -32,7 +32,7 @@ def finalize(family, params, train, calib, groups):
     raw, y = pipe.predict_proba(calib[FEATURES])[:, 1], calib["churned"].to_numpy()
     method, cal_scores = choose_calibrator(raw, y)
     honest = cross_fitted(raw, y, method)
-    margin, by_margin = best_margin(
+    margin, by_margin, margin_test = best_margin(
         ECON.expected_value(honest, calib["MonthlyCharges"]), y, calib["MonthlyCharges"].to_numpy(), ECON
     )
     model = ChurnModel(family, params, pipe, Calibrator(method).fit(raw, y), margin, ECON, groups)
@@ -45,6 +45,7 @@ def finalize(family, params, train, calib, groups):
         "method": method,
         "cv_log_loss": cal_scores,
         "margin": margin,
+        "margin_test": margin_test,
         "profit_by_margin": {str(k): round(v, 0) for k, v in by_margin.items()},
     }
 
@@ -192,6 +193,7 @@ def main():
         "threshold": {
             "margin": model.margin,
             "bayes_optimal_margin": 0.0,
+            "margin_test": cal_report["margin_test"],
             "profit_by_margin_on_calibration": cal_report["profit_by_margin"],
             "test_profit_at_tuned_margin": round(float(ECON.realised(ev > model.margin, y, monthly).sum()), 0),
             "test_profit_at_zero_margin": round(float(ECON.realised(ev > 0, y, monthly).sum()), 0),

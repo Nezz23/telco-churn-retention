@@ -1,8 +1,8 @@
 # Telco Churn: Who Is Worth Saving?
 
 Most churn projects stop at "will this customer leave?" This one answers the question a retention team actually has:
-**which customers are worth a paid offer, how sure are we, and why are they at risk?** Every number below has a 95%
-confidence interval, and every claim is reproducible from this repository.
+**which customers are worth a paid offer, how sure are we, and why are they at risk?** Headline results carry 95%
+confidence intervals, and every number is reproducible from this repository.
 
 - **Model:** XGBoost tuned with Optuna, selected against logistic regression on cross-validated log loss, then probability-calibrated.
 - **Decision:** expected-value targeting with a cost-sensitive threshold.
@@ -20,15 +20,15 @@ Held-out test set: 1,395 customers, touched once. Intervals come from a 2,000-re
 | ROC-AUC | 0.864 [0.843, 0.884] |
 | Log loss · Brier | 0.391 · 0.126 |
 | Calibration error (ECE) | 0.019 |
-| Campaign profit, expected-value targeting | **$28,855** [$22,389, $35,511] |
+| Campaign profit, expected-value targeting | **$29,859** [$23,504, $36,385] |
 | Campaign profit, contacting everyone | −$45,759 [−$54,218, −$36,606] |
 | Campaign profit, perfect foresight (ceiling) | $58,563 |
-| Precision · recall of the offers sent | 54.8% · 68.8% (451 contacted) |
+| Precision · recall of the offers sent | 56.2% · 68.2% (436 contacted) |
 | Revenue at risk over 12 months, no action | $341K (test) · $1.72M extrapolated to all 7,043 customers |
 
 **What the statistics do *not* support, stated plainly:**
-- **Tuned XGBoost vs tuned logistic regression:** XGBoost wins model selection (CV log loss 0.420 vs 0.428). On test, though, the paired difference is ROC-AUC +0.003 [−0.004, +0.010] and profit −$536 [−$2,449, +$1,334]. The two cannot be told apart, so the signal in this dataset is close to linear.
-- **Expected-value targeting vs a plain "P(churn) > 0.5" rule:** +$204 [−$3,614, +$4,073]. Not significant on 1,395 customers. EV targeting's advantage is that it stays correct when the economics change; the 0.5 cutoff does not.
+- **Tuned XGBoost vs tuned logistic regression:** XGBoost wins model selection (CV log loss 0.420 vs 0.428). On test, though, the paired difference is ROC-AUC +0.003 [−0.004, +0.010] and profit −$258 [−$1,950, +$1,451]. The two cannot be told apart, so the signal in this dataset is close to linear.
+- **Expected-value targeting vs a plain "P(churn) > 0.5" rule:** +$1,208 [−$2,487, +$4,930]. Not significant on 1,395 customers. EV targeting's advantage is that it stays correct when the economics change; the 0.5 cutoff does not.
 - **Low save rates:** if offers save only 10% of churners, targeting breaks even (−$29 [−$269, +$128]). Contacting everyone loses $108K.
 
 Revenue at risk measures how big the problem is. Retention profit measures what a campaign earns, which depends on assumed economics: a $100 offer, a 30% save rate and a 12-month value horizon. They are different numbers. See the [model card](docs/model_card.md) and the [resume verification matrix](docs/resume_verification.md).
@@ -41,8 +41,8 @@ Every customer is assigned to one split by a hash of their ID. Each stage sees o
 |---|---|---|
 | Model selection | train (60%) | Optuna TPE (100 XGBoost trials with median pruning; 33 logistic). Selection uses 5-fold CV **log loss**, because the decision multiplies by the probability. |
 | Calibration | calibration (20%) | Identity, Platt or isotonic, chosen by CV log loss (Platt won) |
-| Decision threshold | calibration (20%) | Expected-value margin tuned on *cross-fitted* calibrated probabilities |
-| Final evaluation | test (20%) | Nothing. Measured once. |
+| Decision threshold | calibration (20%) | Expected-value margin searched on *cross-fitted* calibrated probabilities. It moves off the Bayes-optimal $0 only if the gain's paired-bootstrap lower bound is above zero. It wasn't, so the policy is: contact when EV > $0. |
+| Final evaluation | test (20%) | Nothing in training. Each run measures it once. Promotion gates also read it, so successive challengers reuse the same customers. This is disclosed rather than hidden: with 1,395 customers, a separate gate split would cost more precision than it buys. |
 
 The evaluation also covers:
 - **Subgroups:** discrimination and calibration per contract, tenure band, payment method, demographics and more. Every segment with n ≥ 150 is calibrated within 5.1 points.
@@ -60,7 +60,10 @@ data/** change ─▶ model.yml: train ─▶ gate vs champion ─▶ PR ─▶ 
   - floors: ROC-AUC ≥ 0.80, ECE ≤ 0.05, profitable and better than contacting everyone, every sizeable segment calibrated within 10 points;
   - paired non-inferiority against the champion on the same customers, for log loss and for profit.
 - **Rollback.** Run `python -m churn.registry rollback`, or dispatch the `model` workflow with `rollback`. It steps back through previous champions and verifies each artifact.
-- **Retraining** runs when the data changes, not on a timer. Retraining the unchanged snapshot reproduces the identical artifact (same SHA-256), and the registry records it.
+- **Retraining** runs when the data changes, not on a timer. The registry records three real versions:
+  - v1 → v2: retraining the unchanged snapshot reproduced the identical artifact, byte for byte (same SHA-256).
+  - v2 → v3: the threshold rule was changed after an independent audit showed the tuned margin was fitting noise. v3 beat v2 head-to-head on profit by +$1,004 [+$144, +$1,900] with identical log loss, and was promoted through the gate.
+- **Model PRs** are opened by `model.yml`. Add a `MODEL_PR_TOKEN` secret (a fine-grained PAT with contents and pull-request access) so CI runs on them, and allow Actions to create pull requests in the repository settings.
 - **Drift.** `POST /drift` computes PSI plus a KS or χ² test per feature and on the score, for any batch. The app runs it on uploaded batches. A **simulation**, clearly labelled as one because the dataset is a static snapshot, shows the monitor reacting to five synthetic shifts: price rise, acquisition surge, fibre migration, contract lapse, and a no-shift control.
 - **MLflow** tracks every run, every Optuna trial as a nested run, and every report and artifact.
 
@@ -84,16 +87,18 @@ Measured over real HTTP; each request returns scores, decisions and SHAP reasons
 
 | Workload (Apple M4 Pro) | Predictions/s | p50 | p99 |
 |---|---|---|---|
-| 1 customer per request, 1 client, 1 worker | 158 | 6.2 ms | 7.4 ms |
-| 1 customer per request, 8 clients, 4 workers | 362 | 15.5 ms | 54.0 ms |
-| 100 customers per request, 4 clients, 1 worker | 11,208 | 35.1 ms | 66.7 ms |
-| 1,000 customers per request, 2 clients, 4 workers | 44,040 | 44.0 ms | 78.2 ms |
+| 1 customer per request, 1 client, 1 worker | 154 | 6.4 ms | 7.5 ms |
+| 1 customer per request, 8 clients, 4 workers | 351 | 8.7 ms | 65.3 ms |
+| 100 customers per request, 4 clients, 1 worker | 11,063 | 35.4 ms | 65.8 ms |
+| 1,000 customers per request, 2 clients, 4 workers | 38,702 | 49.5 ms | 85.3 ms |
+
+Single-worker results repeat within a few percent between runs. Multi-worker results vary more: 10 customers per request on 4 workers measured 2,354/s and 4,359/s in two runs.
 
 ## Run it
 
 ```bash
 python3.14 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/python -m pytest -q                         # 33 tests: API, model protocol, registry, gate, rollback
+.venv/bin/python -m pytest -q                         # 37 tests: API, model protocol, registry, gate, rollback
 .venv/bin/uvicorn churn.api:app --port 8000           # app at http://localhost:8000, API docs at /docs
 .venv/bin/python -m churn.train --promote             # retrain (~2 min): select, calibrate, evaluate, gate, register
 .venv/bin/python -m churn.registry status|verify|rollback

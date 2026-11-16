@@ -13,7 +13,7 @@ from pathlib import Path
 
 import joblib
 
-ROOT = Path("models")
+ROOT = Path(__file__).resolve().parent.parent / "models"  # independent of the working directory
 INDEX = ROOT / "registry.json"
 
 # Promotion gate. Absolute floors protect against a broken model; non-inferiority margins protect against a
@@ -62,6 +62,8 @@ def load(version=None):
     report = json.loads((folder / "report.json").read_text())
     if sha256(folder / "model.joblib") != report["artifact_sha256"]:
         raise RuntimeError(f"Artifact for {version} does not match its registered SHA-256; refusing to serve it.")
+    if not report.get("gate", {}).get("passed"):
+        raise RuntimeError(f"{version} did not pass its promotion gate; refusing to serve it.")
     return joblib.load(folder / "model.joblib"), report
 
 
@@ -86,12 +88,13 @@ def gate(challenger: dict, champion: dict | None):
             "passed": m["profit"]["value"] > max(0.0, challenger["everyone_profit"]),
         },
     ]
-    worst = max((s for s in challenger["subgroups"] if s["n"] >= SUBGROUP_MIN_N), key=lambda s: abs(s["calibration_gap"]))
+    sizeable = [s for s in challenger["subgroups"] if s["n"] >= SUBGROUP_MIN_N]
+    worst = max(sizeable, key=lambda s: abs(s["calibration_gap"]), default=None)
     checks.append(
         {
             "check": f"Every segment with n >= {SUBGROUP_MIN_N} calibrated within {SUBGROUP_GAP_MAX:.0%}",
-            "value": f"{worst['column']}={worst['level']}: {worst['calibration_gap']:+.3f}",
-            "passed": abs(worst["calibration_gap"]) <= SUBGROUP_GAP_MAX,
+            "value": f"{worst['column']}={worst['level']}: {worst['calibration_gap']:+.3f}" if worst else "no segment that large",
+            "passed": worst is None or abs(worst["calibration_gap"]) <= SUBGROUP_GAP_MAX,
         }
     )
     if champion is not None:

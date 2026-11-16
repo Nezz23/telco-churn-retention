@@ -60,12 +60,14 @@ def compare(y, probs: dict, decisions: dict, econ, monthly, reference):
 
 def reliability(y, p, bins=10):
     """Quantile-binned reliability curve with a Wilson 95% interval on each bin's observed rate."""
-    edges = np.quantile(p, np.linspace(0, 1, bins + 1))
-    idx = np.clip(np.searchsorted(edges, p, side="right") - 1, 0, bins - 1)
+    edges = np.unique(np.quantile(p, np.linspace(0, 1, bins + 1)))  # tied scores collapse duplicate edges
+    idx = np.clip(np.searchsorted(edges, p, side="right") - 1, 0, max(0, len(edges) - 2))
     rows = []
-    for b in range(bins):
+    for b in range(max(1, len(edges) - 1)):
         m = idx == b
         n, k = int(m.sum()), float(y[m].sum())
+        if n == 0:
+            continue
         z, phat = 1.96, k / n
         centre, half = (
             (phat + z * z / (2 * n)) / (1 + z * z / n),
@@ -197,7 +199,7 @@ def error_analysis(frame, y, p, target, ev, econ, reasons, top=12):
 
 
 def sensitivity(y, p, monthly, econ_cls, save_rates=(0.1, 0.2, 0.3, 0.4, 0.5), costs=(50, 100, 150, 200), b=500):
-    """Realised profit of re-optimised EV targeting vs contacting everyone across assumption grids, with CIs."""
+    """Realised profit of Bayes-optimal EV targeting (EV > $0) vs contacting everyone across assumption grids, with CIs."""
     idx = resamples(len(y), b, seed=2)
     rows = []
     for s in save_rates:

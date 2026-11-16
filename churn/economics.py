@@ -32,11 +32,15 @@ class Economics:
 MARGINS = np.arange(-100, 101, 5.0)  # $ margins searched when tuning the decision threshold
 
 
-def best_margin(ev, churned, monthly, econ, grid=MARGINS):
-    """Cost-sensitive threshold: the EV margin that maximises realised profit (ties go to the margin nearest 0,
-    the Bayes-optimal margin for calibrated probabilities)."""
+def best_margin(ev, churned, monthly, econ, grid=MARGINS, b=2000, seed=0):
+    """Cost-sensitive threshold. $0 is the Bayes-optimal margin for calibrated probabilities; the best margin on the
+    grid replaces it only if it earns more with a paired-bootstrap 95% lower bound above zero, so the threshold never
+    chases noise. Returns (margin, profit by margin, the test of best vs $0)."""
     profits = [econ.realised(ev > m, churned, monthly).sum() for m in grid]
     best = max(profits)
-    return float(min((m for m, p in zip(grid, profits, strict=True) if p == best), key=abs)), dict(
-        zip(grid.tolist(), profits, strict=True)
-    )
+    tuned = float(min((m for m, p in zip(grid, profits, strict=True) if p == best), key=abs))
+    gain = econ.realised(ev > tuned, churned, monthly) - econ.realised(ev > 0, churned, monthly)
+    idx = np.random.default_rng(seed).integers(0, len(gain), (b, len(gain)))
+    low = float(np.percentile(gain[idx].sum(axis=1), 2.5))
+    test = {"best_margin": tuned, "gain_over_zero": round(float(gain.sum()), 0), "gain_ci_low": round(low, 0)}
+    return (tuned if low > 0 else 0.0), dict(zip(grid.tolist(), profits, strict=True)), test

@@ -1,4 +1,8 @@
-"""Data and prediction drift against the training reference, and a clearly labelled drift SIMULATION."""
+"""Data and prediction drift against the reference customers, and a clearly labelled drift SIMULATION.
+
+The reference is the calibration split: out-of-sample for the model, so its score distribution is what live traffic
+should look like. Lead with PSI: the KS / chi-square p-values are per feature, uncorrected for multiplicity, and flag
+trivial differences on large batches."""
 
 import numpy as np
 import pandas as pd

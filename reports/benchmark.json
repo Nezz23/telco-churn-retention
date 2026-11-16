@@ -1,153 +1,153 @@
 {
-  "created_at": "2026-11-16T22:35:53+00:00",
+  "created_at": "2026-11-16T22:48:34+00:00",
   "environment": {
     "machine": "Apple M4 Pro",
     "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
     "cpus": 12,
     "python": "3.14.8",
-    "model_version": "v20261116-222623",
+    "model_version": "v20261116-224815",
     "seconds_per_scenario": 8.0
   },
   "in_process": {
     "customers": 1000,
-    "median_ms": 26.4,
-    "predictions_per_s": 37929.0
+    "median_ms": 26.1,
+    "predictions_per_s": 38254.0
   },
   "by_workers": {
     "1": [
       {
         "batch": 1,
         "clients": 1,
-        "requests": 1259,
+        "requests": 1229,
         "seconds": 7.96,
-        "requests_per_s": 158.2,
-        "predictions_per_s": 158.0,
-        "p50_ms": 6.2,
+        "requests_per_s": 154.4,
+        "predictions_per_s": 154.0,
+        "p50_ms": 6.4,
         "p95_ms": 7.0,
-        "p99_ms": 7.4
+        "p99_ms": 7.5
       },
       {
         "batch": 1,
         "clients": 8,
-        "requests": 1128,
+        "requests": 1114,
         "seconds": 8.02,
-        "requests_per_s": 140.7,
-        "predictions_per_s": 141.0,
-        "p50_ms": 56.9,
-        "p95_ms": 69.4,
-        "p99_ms": 79.7
+        "requests_per_s": 138.9,
+        "predictions_per_s": 139.0,
+        "p50_ms": 57.3,
+        "p95_ms": 72.4,
+        "p99_ms": 80.1
       },
       {
         "batch": 1,
         "clients": 32,
-        "requests": 1092,
+        "requests": 1089,
         "seconds": 8.07,
-        "requests_per_s": 135.2,
+        "requests_per_s": 134.9,
         "predictions_per_s": 135.0,
-        "p50_ms": 235.3,
-        "p95_ms": 298.8,
-        "p99_ms": 340.9
+        "p50_ms": 234.5,
+        "p95_ms": 302.7,
+        "p99_ms": 341.5
       },
       {
         "batch": 10,
         "clients": 8,
-        "requests": 1065,
-        "seconds": 8.0,
-        "requests_per_s": 133.1,
-        "predictions_per_s": 1331.0,
-        "p50_ms": 59.6,
-        "p95_ms": 76.6,
-        "p99_ms": 87.8
+        "requests": 1076,
+        "seconds": 8.02,
+        "requests_per_s": 134.1,
+        "predictions_per_s": 1341.0,
+        "p50_ms": 59.4,
+        "p95_ms": 74.4,
+        "p99_ms": 84.4
       },
       {
         "batch": 100,
         "clients": 4,
-        "requests": 896,
-        "seconds": 7.99,
-        "requests_per_s": 112.1,
-        "predictions_per_s": 11208.0,
-        "p50_ms": 35.1,
-        "p95_ms": 41.6,
-        "p99_ms": 66.7
+        "requests": 885,
+        "seconds": 8.0,
+        "requests_per_s": 110.6,
+        "predictions_per_s": 11063.0,
+        "p50_ms": 35.4,
+        "p95_ms": 42.2,
+        "p99_ms": 65.8
       },
       {
         "batch": 1000,
         "clients": 2,
         "requests": 230,
-        "seconds": 7.97,
-        "requests_per_s": 28.9,
-        "predictions_per_s": 28869.0,
-        "p50_ms": 67.1,
-        "p95_ms": 95.3,
-        "p99_ms": 104.2
+        "seconds": 7.94,
+        "requests_per_s": 29.0,
+        "predictions_per_s": 28984.0,
+        "p50_ms": 66.4,
+        "p95_ms": 95.8,
+        "p99_ms": 105.8
       }
     ],
     "4": [
       {
         "batch": 1,
         "clients": 1,
-        "requests": 1186,
-        "seconds": 7.95,
-        "requests_per_s": 149.2,
-        "predictions_per_s": 149.0,
+        "requests": 1174,
+        "seconds": 7.96,
+        "requests_per_s": 147.5,
+        "predictions_per_s": 148.0,
         "p50_ms": 6.6,
-        "p95_ms": 7.2,
-        "p99_ms": 7.7
+        "p95_ms": 7.3,
+        "p99_ms": 8.1
       },
       {
         "batch": 1,
         "clients": 8,
-        "requests": 2899,
+        "requests": 2813,
         "seconds": 8.01,
-        "requests_per_s": 362.1,
-        "predictions_per_s": 362.0,
-        "p50_ms": 15.5,
-        "p95_ms": 48.7,
-        "p99_ms": 54.0
+        "requests_per_s": 351.1,
+        "predictions_per_s": 351.0,
+        "p50_ms": 8.7,
+        "p95_ms": 58.0,
+        "p99_ms": 65.3
       },
       {
         "batch": 1,
         "clients": 32,
-        "requests": 2831,
-        "seconds": 8.05,
-        "requests_per_s": 351.6,
+        "requests": 2828,
+        "seconds": 8.04,
+        "requests_per_s": 351.9,
         "predictions_per_s": 352.0,
-        "p50_ms": 87.3,
-        "p95_ms": 125.0,
-        "p99_ms": 137.2
+        "p50_ms": 90.2,
+        "p95_ms": 115.2,
+        "p99_ms": 128.0
       },
       {
         "batch": 10,
         "clients": 8,
-        "requests": 1887,
-        "seconds": 8.02,
-        "requests_per_s": 235.4,
-        "predictions_per_s": 2354.0,
-        "p50_ms": 34.8,
-        "p95_ms": 69.6,
-        "p99_ms": 77.2
+        "requests": 3485,
+        "seconds": 7.99,
+        "requests_per_s": 435.9,
+        "predictions_per_s": 4359.0,
+        "p50_ms": 21.4,
+        "p95_ms": 30.1,
+        "p99_ms": 33.3
       },
       {
         "batch": 100,
         "clients": 4,
-        "requests": 1990,
+        "requests": 2269,
         "seconds": 7.98,
-        "requests_per_s": 249.4,
-        "predictions_per_s": 24936.0,
-        "p50_ms": 13.4,
-        "p95_ms": 22.8,
-        "p99_ms": 25.9
+        "requests_per_s": 284.2,
+        "predictions_per_s": 28422.0,
+        "p50_ms": 13.9,
+        "p95_ms": 15.1,
+        "p99_ms": 16.1
       },
       {
         "batch": 1000,
         "clients": 2,
-        "requests": 350,
-        "seconds": 7.95,
-        "requests_per_s": 44.0,
-        "predictions_per_s": 44040.0,
-        "p50_ms": 44.0,
-        "p95_ms": 47.3,
-        "p99_ms": 78.2
+        "requests": 306,
+        "seconds": 7.91,
+        "requests_per_s": 38.7,
+        "predictions_per_s": 38702.0,
+        "p50_ms": 49.5,
+        "p95_ms": 54.8,
+        "p99_ms": 85.3
       }
     ]
   }

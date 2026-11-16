@@ -1,10 +1,11 @@
 """The served artifact, its evaluation protocol and its promotion record."""
 
 import numpy as np
+import pytest
 from sklearn.metrics import roc_auc_score
 
 from churn import registry
-from churn.data import bucket, load, split
+from churn.data import bucket, fingerprint, load, split
 
 model, report = registry.load()
 
@@ -19,6 +20,8 @@ def test_splits_are_disjoint_complete_and_stable():
 
 def test_artifact_reproduces_its_reported_test_metrics():
     """The bytes on disk are the model that was evaluated: re-score the test customers and compare."""
+    if fingerprint() != report["data_sha256"]:
+        pytest.skip("data changed since the champion was trained; the model workflow's PR brings a matching champion")
     test = split(load())["test"]
     p = model.predict_proba(test)
     chosen = report["selection"]["chosen"]

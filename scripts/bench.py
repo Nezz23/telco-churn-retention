@@ -78,7 +78,8 @@ def serve(workers):
             if httpx.get(f"http://127.0.0.1:{PORT}/health").status_code == 200:
                 return proc
         except httpx.TransportError:
-            time.sleep(0.25)
+            pass
+        time.sleep(0.25)
     proc.kill()
     raise RuntimeError("server did not start")
 

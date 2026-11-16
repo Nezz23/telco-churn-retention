@@ -41,12 +41,12 @@ def test_gate_blocks_a_challenger_worse_than_the_champion():
     assert registry.gate(tied, champion)["passed"]
 
 
-def fake_version(reg, name, content=b"model-bytes"):
+def fake_version(reg, name, content=b"model-bytes", gate=True):
     folder = reg / name
     folder.mkdir()
     (folder / "model.joblib").write_bytes(content)
     (folder / "report.json").write_text(
-        json.dumps({"version": name, "artifact_sha256": registry.sha256(folder / "model.joblib")})
+        json.dumps({"version": name, "artifact_sha256": registry.sha256(folder / "model.joblib"), "gate": {"passed": gate}})
     )
 
 
@@ -76,3 +76,17 @@ def test_rollback_steps_back_through_champions(reg, monkeypatch):
     with pytest.raises(RuntimeError, match="Nothing to roll back"):
         registry.rollback()
     assert registry.index()["champion"] == "v1"
+
+
+def test_a_champion_whose_gate_failed_is_never_served(reg, monkeypatch):
+    """Even if registry.json is hand-edited to point at it."""
+    monkeypatch.setattr(registry.joblib, "load", lambda path: "model")
+    fake_version(reg, "v1", gate=False)
+    (reg / "registry.json").write_text(json.dumps({"champion": "v1", "events": []}))
+    with pytest.raises(RuntimeError, match="gate"):
+        registry.load()
+
+
+def test_gate_handles_a_test_set_with_no_large_segments():
+    small = evaluation() | {"subgroups": [{"column": "c", "level": "l", "n": 10, "calibration_gap": 0.4}]}
+    assert registry.gate(small, None)["passed"]

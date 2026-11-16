@@ -9,9 +9,10 @@ from typing import Annotated, Literal
 import numpy as np
 import pandas as pd
 from fastapi import Body, FastAPI, Request
-from fastapi.responses import FileResponse
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from churn import drift, explain, registry
 
@@ -42,6 +43,24 @@ class Customer(BaseModel):
     Contract: Literal["Month-to-month", "One year", "Two year"]
     PaperlessBilling: YesNo
     PaymentMethod: Literal["Electronic check", "Mailed check", "Bank transfer (automatic)", "Credit card (automatic)"]
+
+    @model_validator(mode="after")
+    def consistent(self):
+        """Reject combinations that never occur in the data, so the model never scores what it has not seen."""
+        addons = [
+            self.OnlineSecurity,
+            self.OnlineBackup,
+            self.DeviceProtection,
+            self.TechSupport,
+            self.StreamingTV,
+            self.StreamingMovies,
+        ]
+        no_internet = self.InternetService == "No"
+        if any((a == "No internet service") != no_internet for a in addons):
+            raise ValueError("add-ons must be 'No internet service' exactly when InternetService is 'No'")
+        if (self.MultipleLines == "No phone service") != (self.PhoneService == "No"):
+            raise ValueError("MultipleLines must be 'No phone service' exactly when PhoneService is 'No'")
+        return self
 
 
 class Reason(BaseModel):
@@ -81,17 +100,27 @@ app = FastAPI(
 )
 
 
+@app.exception_handler(RequestValidationError)
+async def invalid(request: Request, exc: RequestValidationError):
+    # Drop the echoed input: it can hold NaN/Infinity, which JSON cannot carry (the default handler would 500).
+    errors = [{k: v for k, v in e.items() if k in ("loc", "msg", "type")} for e in exc.errors()]
+    return JSONResponse({"detail": errors}, status_code=422)
+
+
 @app.middleware("http")
 async def record(request: Request, call_next):
-    start = time.perf_counter()
-    response = await call_next(request)
-    route = request.scope.get("route")
-    if route is not None and request.url.path.startswith(("/predict", "/explain", "/drift")):
-        LATENCY.setdefault(route.path, deque(maxlen=5000)).append((time.perf_counter() - start) * 1000)
-        counts = COUNTS.setdefault(route.path, [0, 0])
-        counts[0] += 1
-        counts[1] += response.status_code >= 400
-    return response
+    start, status = time.perf_counter(), 500
+    try:
+        response = await call_next(request)
+        status = response.status_code
+        return response
+    finally:  # counts server errors too, not only responses that made it back
+        route = request.scope.get("route")
+        if route is not None and request.url.path.startswith(("/predict", "/explain", "/drift")):
+            LATENCY.setdefault(route.path, deque(maxlen=5000)).append((time.perf_counter() - start) * 1000)
+            counts = COUNTS.setdefault(route.path, [0, 0])
+            counts[0] += 1
+            counts[1] += status >= 400
 
 
 def frame(customers):

@@ -126,7 +126,7 @@ def cross_fitted(raw, y, method):
 @dataclass
 class ChurnModel:
     """Everything needed to score a customer: the fitted pipeline, its calibrator, the decision margin and the
-    economics it was tuned for, plus the training reference profile drift is measured against."""
+    economics it was tuned for, plus the reference profile (calibration customers) drift is measured against."""
 
     family: str
     params: dict

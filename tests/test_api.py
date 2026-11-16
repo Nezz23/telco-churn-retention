@@ -1,3 +1,5 @@
+import json
+
 import numpy as np
 import pytest
 from conftest import LOYAL, RISKY
@@ -48,6 +50,17 @@ def test_offers_go_mostly_to_customers_who_actually_churned(csv_rows):
 @pytest.mark.parametrize("bad", [{"Contract": "Forever"}, {"tenure": -1}, {"MonthlyCharges": "lots"}])
 def test_rejects_bad_input(bad):
     assert client.post("/predict", json=[RISKY | bad]).status_code == 422
+
+
+def test_rejects_combinations_that_cannot_exist():
+    assert client.post("/predict", json=[RISKY | {"InternetService": "No"}]).status_code == 422  # add-ons still "No"
+    assert client.post("/predict", json=[RISKY | {"PhoneService": "No"}]).status_code == 422  # MultipleLines still "No"
+
+
+def test_non_finite_numbers_are_a_clean_422_not_a_crash():
+    body = json.dumps([RISKY]).replace('"MonthlyCharges": 95.0', '"MonthlyCharges": NaN')
+    r = client.post("/predict", content=body, headers={"content-type": "application/json"})
+    assert r.status_code == 422 and "input" not in r.json()["detail"][0]
 
 
 def test_rejects_empty_batch():

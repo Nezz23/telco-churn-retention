@@ -33,8 +33,11 @@ jobs:
         if: inputs.action == 'rollback'
         run: python -m churn.registry rollback | tee -a "$GITHUB_STEP_SUMMARY" && python -m churn.card
       - run: pytest -q
+      # A PR opened with the default GITHUB_TOKEN does not trigger ci.yml, so the container smoke test would never run on
+      # it. MODEL_PR_TOKEN (fine-grained PAT: contents + pull requests on this repo) makes CI run on the model PR.
       - uses: peter-evans/create-pull-request@v7
         with:
+          token: ${{ secrets.MODEL_PR_TOKEN || github.token }}
           branch: model/${{ inputs.action || 'retrain' }}-${{ github.run_id }}
           title: "Model ${{ inputs.action || 'retrain' }}: run ${{ github.run_id }}"
           body: "Gate results and metrics: see the workflow run summary and docs/model_card.md. Merge to deploy."

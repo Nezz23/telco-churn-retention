@@ -265,9 +265,9 @@ function figures(items) {
 }
 function table(cols, rows, o = {}) {
   return h("div", { class: "table-wrap" }, h("table", {},
-    h("thead", {}, h("tr", {}, cols.map((c) => h("th", { class: c.r ? "r" : null, text: c.label })))),
+    h("thead", {}, h("tr", {}, cols.map((c) => h("th", { class: [c.r ? "r" : "", c.cls || ""].join(" ").trim() || null, text: c.label })))),
     h("tbody", {}, rows.map((row) => row instanceof Node ? row : h("tr", { class: o.rowClass?.(row) },
-      cols.map((c) => { const v = c.cell(row); return h("td", { class: c.r ? "r" : null }, v); }))))));
+      cols.map((c) => { const v = c.cell(row); return h("td", { class: [c.r ? "r" : "", c.cls || ""].join(" ").trim() || null }, v); }))))));
 }
 const ciText = (ci, f) => (ci ? `${f(ci[0])} – ${f(ci[1])}` : "");
 function valueCI(v, ci, f) {
@@ -705,6 +705,12 @@ async function renderStrategy(view) {
   });
   const reset = h("button", { type: "button", class: "link", text: "Reset to model assumptions", onclick: () => renderStrategy(view) });
 
+  // The served policy's margin was tuned for the model's own economics; with any other economics the
+  // Bayes-optimal margin for calibrated probabilities ($0) applies.
+  const served = ev.threshold.margin;
+  const isDefault = () => st.offer_cost === defaults.offer_cost && Math.abs(st.save_rate - defaults.save_rate) < 1e-9 && st.horizon === defaults.horizon;
+  const marginFor = () => (isDefault() ? served : 0);
+  const marginNote = h("span", { class: "note" });
   const figs = h("div");
   const policyTable = h("div");
   const curve = h("div");
@@ -712,12 +718,13 @@ async function renderStrategy(view) {
 
   function compute() {
     const { offer_cost: c, save_rate: sr, horizon: H, budget } = st;
+    const margin = marginFor();
     const evs = P.map((x) => x.p * sr * H * x.monthly - c);
     const gainIf = P.map((x) => x.churned * sr * H * x.monthly - c); // realised $ if contacted
     const order = evs.map((_, i) => i).sort((a, b) => evs[b] - evs[a]);
     const evTarget = new Uint8Array(n);
     let k = 0;
-    for (const i of order) { if (evs[i] <= 0 || k >= budget) break; evTarget[i] = 1; k++; }
+    for (const i of order) { if (evs[i] <= margin || k >= budget) break; evTarget[i] = 1; k++; }
     const policies = [
       ["Expected-value targeting", evTarget, true],
       ["Contact if P(churn) > 0.5", Uint8Array.from(P, (x) => x.p > 0.5)],
@@ -742,6 +749,9 @@ async function renderStrategy(view) {
 
   function update() {
     const r = compute();
+    marginNote.textContent = isDefault()
+      ? `Economics are assumptions, not data. At the model's own economics (${fmt.money(defaults.offer_cost)} offer, ${fmt.pct(defaults.save_rate, 0)} save rate, ${defaults.horizon}-month value) targeting uses the served decision margin, ${fmt.money(served)}: customers with expected value above it are contacted, highest first, up to the budget — the same policy the API applies.`
+      : `Economics are assumptions, not data. These differ from the model's (${fmt.money(defaults.offer_cost)} / ${fmt.pct(defaults.save_rate, 0)} / ${defaults.horizon} mo), so the served margin of ${fmt.money(served)} no longer applies; targeting uses $0, the Bayes-optimal margin for calibrated probabilities.`;
     const main = r.policies[0];
     figs.replaceChildren(figures([
       [`Revenue at risk · ${st.horizon} mo`, fmt.moneyK(r.atRisk), "Σ P(churn) × bill × horizon — the problem's size, no action taken"],
@@ -752,8 +762,8 @@ async function renderStrategy(view) {
     policyTable.replaceChildren(table([
       { label: "Policy", cell: (p) => p.main ? h("b", { text: p.name }) : p.name },
       { label: "Contacted", r: true, cell: (p) => fmt.int(p.contacted) },
-      { label: "Precision", r: true, cell: (p) => fmt.pct(p.precision) },
-      { label: "Recall", r: true, cell: (p) => fmt.pct(p.recall) },
+      { label: "Precision", r: true, cls: "wide-only", cell: (p) => fmt.pct(p.precision) },
+      { label: "Recall", r: true, cls: "wide-only", cell: (p) => fmt.pct(p.recall) },
       { label: "Realised profit", r: true, cell: (p) => valueCI(p.profit, p.ci, fmt.moneyK) },
     ], r.policies, { rowClass: (p) => (p.main ? "hl" : null) }));
     curve.replaceChildren(
@@ -771,6 +781,7 @@ async function renderStrategy(view) {
   const costs = [...new Set(sens.map((x) => x.offer_cost))].sort((a, b) => a - b);
   const maxAbs = Math.max(...sens.map((x) => Math.abs(x.model)));
   const heat = h("div", { class: "heat", style: { gridTemplateColumns: `72px repeat(${costs.length}, minmax(0, 1fr))` } },
+    h("div", { class: "hd row axis-title", text: "Save rate" }), h("div", { class: "hd axis-title", style: { gridColumn: `span ${costs.length}` }, text: "Offer cost per customer contacted" }),
     h("div", { class: "hd row", text: "" }), costs.map((c) => h("div", { class: "hd", text: fmt.money(c) })),
     rates.map((rate) => [h("div", { class: "hd row", text: fmt.pct(rate, 0) }), costs.map((c) => {
       const cell = sens.find((x) => x.save_rate === rate && x.offer_cost === c);
@@ -786,12 +797,12 @@ async function renderStrategy(view) {
     pageHead("03 · Retention strategy & simulation", "What should the campaign look like?",
       `Change the campaign economics and see how targeting holds up on the ${fmt.int(n)} held-out customers, whose real outcomes are known. Every profit figure carries a 95% bootstrap interval.`),
     h("div", { style: { paddingTop: "24px" } }, h("div", { class: "controls" }, sliders), h("div", { class: "toolbar", style: { justifyContent: "space-between", paddingTop: "10px" } },
-      h("span", { class: "note", text: `Economics are assumptions, not data. Model defaults: ${fmt.money(defaults.offer_cost)} offer, ${fmt.pct(defaults.save_rate, 0)} save rate, ${defaults.horizon}-month value. Targeting contacts customers with expected value above $0 (Bayes-optimal for calibrated probabilities), highest first, up to the budget.` }), reset)),
+      marginNote, reset)),
     block("Outcome", [h("p", { text: "Revenue at risk sizes the problem; it is not money a campaign can recover. Expected retention profit is the model's forecast for the offers it sends; realised profit is what those offers actually earned on known outcomes." })], [figs]),
     block("Policies compared", [h("p", { text: "Same customers, same economics, different targeting rules. Perfect foresight is the ceiling: contact exactly the churners whose bill makes saving them worth the offer." })], [policyTable]),
     block("Profit curve", [h("p", { text: "Contacting customers in order of expected value. Realised profit peaks and then falls: past that point each extra offer costs more than it saves." })], [curve]),
     block("Sensitivity", [h("p", { text: "Realised profit of re-optimised expected-value targeting across save-rate and offer-cost assumptions (12-month horizon). Blue is profit, red is loss; hover for the interval and the contact-everyone comparison." }),
-      h("p", { class: "note", text: "Computed at training time from the held-out customers." })], [h("div", { class: "table-wrap" }, h("div", { style: { minWidth: "380px" } }, h("div", { class: "note", style: { marginBottom: "8px" }, text: "Rows: save rate · Columns: offer cost per customer contacted" }), heat))]),
+      h("p", { class: "note", text: "Computed at training time from the held-out customers." })], [h("div", { class: "table-wrap" }, h("div", { style: { minWidth: "380px" } }, heat))]),
   );
   update();
 }

@@ -14,7 +14,7 @@ def test_expected_value_and_realised_profit():
 
 
 def test_margin_search_prefers_zero_on_ties():
-    margin, _ = best_margin(np.array([50.0, -50.0]), np.array([1, 0]), np.array([100.0, 100.0]), Economics())
+    margin, _, _ = best_margin(np.array([50.0, -50.0]), np.array([1, 0]), np.array([100.0, 100.0]), Economics())
     assert margin == 0.0  # every margin in [-50, 50) earns the same; 0 is the Bayes-optimal one
 
 
