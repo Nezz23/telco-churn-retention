@@ -72,6 +72,7 @@ button, input, select { font: inherit; color: inherit; }
 .nav .idx { font: 11px var(--mono); color: var(--muted); }
 .nav a[aria-current="page"] .idx { color: var(--accent); }
 .rail-foot { margin-top: auto; display: grid; gap: 10px; padding: 0 8px; font-size: 12px; color: var(--muted); }
+.rail-note { margin: 0; line-height: 1.45; }
 .rail-links { display: flex; justify-content: space-between; gap: 8px; }
 .rail-links a { text-decoration: none; }
 .rail-links a:hover, .link:hover { color: var(--ink); }
@@ -273,7 +274,7 @@ th[aria-sort="ascending"] button::after { border-bottom-color: currentColor; bor
     background: color-mix(in srgb, var(--page) 88%, transparent); backdrop-filter: saturate(1.4) blur(10px); }
   .brand { padding: 0; }
   .rail-foot { margin: 0 0 0 auto; padding: 0; }
-  .rail-foot .status-line { display: none; }
+  .rail-foot .status-line, .rail-note { display: none; }
   .nav { order: 3; flex-basis: 100%; display: flex; overflow-x: auto; gap: 2px; margin: 0 -16px; padding: 0 16px 8px; scrollbar-width: none; }
   .nav .idx { display: none; }
   .nav .long { display: none; }

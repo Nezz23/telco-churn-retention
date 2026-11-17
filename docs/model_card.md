@@ -8,7 +8,7 @@ Rank existing telecom customers for a paid retention offer, and decide per custo
 **Not for:** pricing, credit or eligibility decisions; customers outside a consumer telecom base like the training data; estimating whether an offer *changes* behaviour (that needs uplift modelling on A/B campaign data).
 
 ## Data
-IBM Telco Customer Churn, 7,043 customers, one static snapshot (SHA-256 `16320c9c1ec7…`). Each customer is assigned to a split by a hash of their ID, so the assignment never changes as data grows.
+IBM Telco Customer Churn: a **fictional** company IBM created for teaching, so results describe this sample, not a real operator. 7,043 customers, one static snapshot (SHA-256 `16320c9c1ec7…`). Each customer is assigned to a split by a hash of their ID, so the assignment never changes as data grows.
 
 | Split | Customers | Churn rate | Used for |
 |---|---|---|---|
