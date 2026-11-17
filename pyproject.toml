@@ -1,0 +1,17 @@
+[project]
+name = "telco-churn"
+version = "2.0.0"
+description = "Calibrated churn risk, profit-based retention targeting, and the MLOps around it"
+requires-python = ">=3.14"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 130
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["E501"]  # the formatter owns line length; long f-strings in the model card stay readable

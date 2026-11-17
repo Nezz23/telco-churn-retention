@@ -1,0 +1,50 @@
+# Retrains only when the data actually changes (or on request), gates the challenger against the champion, and
+# opens a pull request. Merging that PR is the human approval; ci.yml then tests it and Render deploys it.
+name: model
+on:
+  push:
+    branches: [main]
+    paths: ["data/**"]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: retrain a challenger, or roll back to the previous champion
+        type: choice
+        options: [retrain, rollback]
+        default: retrain
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  model:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require MODEL_PR_TOKEN (see the comment on the pull-request step)
+        env: { TOKEN: "${{ secrets.MODEL_PR_TOKEN }}" }
+        run: '[ -n "$TOKEN" ] || { echo "::error::Set the MODEL_PR_TOKEN repository secret"; exit 1; }'
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"  # same as the Python that trained the committed artifact
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Train a challenger and promote it only if it passes the gate
+        if: inputs.action != 'rollback'
+        run: python -m churn.train --promote | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Roll back to the previous champion
+        if: inputs.action == 'rollback'
+        run: python -m churn.registry rollback | tee -a "$GITHUB_STEP_SUMMARY" && python -m churn.card
+      - run: pytest -q
+      # A PR opened with the default GITHUB_TOKEN does not trigger ci.yml, so the container smoke test would never run on
+      # it. MODEL_PR_TOKEN (fine-grained PAT: contents + pull requests on this repo) is required: no silent fallback.
+      - uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.MODEL_PR_TOKEN }}
+          branch: model/${{ inputs.action || 'retrain' }}-${{ github.run_id }}
+          title: "Model ${{ inputs.action || 'retrain' }}: run ${{ github.run_id }}"
+          body: "Gate results and metrics: see the workflow run summary and docs/model_card.md. Merge to deploy."
+          commit-message: "Model ${{ inputs.action || 'retrain' }} (run ${{ github.run_id }})"
+          add-paths: |
+            models/**
+            docs/model_card.md

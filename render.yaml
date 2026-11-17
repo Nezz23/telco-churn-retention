@@ -3,4 +3,6 @@ services:
     name: telco-churn-retention
     runtime: docker
     plan: free
+    branch: main
     healthCheckPath: /health
+    autoDeployTrigger: checksPass  # deploy only after the ci workflow below passes on the commit

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Telco Churn · Retention</title>
+<meta name="description" content="Calibrated churn risk, expected-value retention targeting and the evidence behind it.">
+<link rel="stylesheet" href="/static/app.css">
+<script>try{const t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+<div class="shell">
+  <nav class="rail" aria-label="Sections">
+    <a class="brand" href="#score">
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 1.5A8.5 8.5 0 0 1 18.5 10H10z" fill="var(--accent)"/></svg>
+      <span><b>Telco Churn</b><small>Retention intelligence</small></span>
+    </a>
+    <ol class="nav">
+      <li><a href="#score" data-route="score"><span class="idx">01</span><span class="long">Customer scoring</span><span class="short">Score</span></a></li>
+      <li><a href="#batch" data-route="batch"><span class="idx">02</span><span class="long">Batch predictions</span><span class="short">Batch</span></a></li>
+      <li><a href="#strategy" data-route="strategy"><span class="idx">03</span><span class="long">Retention strategy</span><span class="short">Strategy</span></a></li>
+      <li><a href="#evidence" data-route="evidence"><span class="idx">04</span><span class="long">Model evidence</span><span class="short">Evidence</span></a></li>
+      <li><a href="#ops" data-route="ops"><span class="idx">05</span><span class="long">MLOps &amp; health</span><span class="short">MLOps</span></a></li>
+    </ol>
+    <div class="rail-foot">
+      <div id="rail-status" class="status-line"><span class="dot"></span><span>Connecting…</span></div>
+      <div class="rail-links"><a href="/docs">API reference</a><button id="theme" type="button" class="link" aria-label="Toggle colour theme">Theme: system</button></div>
+    </div>
+  </nav>
+  <main id="main" tabindex="-1">
+    <section id="view-score" data-view="score" hidden></section>
+    <section id="view-batch" data-view="batch" hidden></section>
+    <section id="view-strategy" data-view="strategy" hidden></section>
+    <section id="view-evidence" data-view="evidence" hidden></section>
+    <section id="view-ops" data-view="ops" hidden></section>
+  </main>
+</div>
+<div id="tip" class="tip" role="status" hidden></div>
+<script type="module" src="/static/app.js"></script>
+</body>
+</html>
