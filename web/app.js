@@ -929,7 +929,8 @@ async function renderEvidence(view) {
   view.replaceChildren(
     pageHead("04 · Model evidence & explainability", "How far can these predictions be trusted?",
       `Every number here comes from the ${fmt.int(ev.splits.test.n)} test customers, scored once after model selection, calibration and threshold tuning were finished on separate customers.`),
-    block("Strict separation", [h("p", { text: "Customers are assigned to a split by a hash of their ID, so the assignment never changes as data grows and no stage sees another stage's customers." })], [
+    block("Strict separation", [h("p", { text: "Customers are assigned to a split by a hash of their ID, so the assignment never changes as data grows and no stage sees another stage's customers." }),
+      h("p", { class: "note", text: "Data: IBM Telco Customer Churn, a fictional company IBM created for teaching (7,043 customers, one snapshot). Results describe that sample, not a real operator." })], [
       table([{ label: "Split", cell: ([k]) => h("b", { text: titleCase(k) }) }, { label: "Customers", r: true, cell: ([, v]) => fmt.int(v.n) },
         { label: "Churn rate", r: true, cell: ([, v]) => fmt.pct(v.churn_rate) },
         { label: "Used for", cell: ([k]) => ({ train: "Model selection — Optuna, 5-fold CV", calibration: "Calibrator choice & fit · decision threshold", test: "Final evaluation, touched once" })[k] }],

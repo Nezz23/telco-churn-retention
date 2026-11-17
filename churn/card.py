@@ -33,7 +33,7 @@ def model_card(r):
         "estimating whether an offer *changes* behaviour (that needs uplift modelling on A/B campaign data).",
         "",
         "## Data",
-        f"IBM Telco Customer Churn, {r['n_customers']:,} customers, one static snapshot (SHA-256 `{r['data_sha256'][:12]}…`). "
+        f"IBM Telco Customer Churn: a **fictional** company IBM created for teaching, so results describe this sample, not a real operator. {r['n_customers']:,} customers, one static snapshot (SHA-256 `{r['data_sha256'][:12]}…`). "
         "Each customer is assigned to a split by a hash of their ID, so the assignment never changes as data grows.",
         "",
         "| Split | Customers | Churn rate | Used for |",

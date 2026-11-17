@@ -4,6 +4,12 @@ Most churn projects stop at "will this customer leave?" This one answers the que
 **which customers are worth a paid offer, how sure are we, and why are they at risk?** Headline results carry 95%
 confidence intervals, and every number is reproducible from this repository.
 
+**Live app:** [telco-churn-retention.onrender.com](https://telco-churn-retention.onrender.com) · **API docs:** [/docs](https://telco-churn-retention.onrender.com/docs).
+It runs on Render's free tier, which sleeps when idle, so the first request can take up to a minute.
+
+> **The data is fictional.** IBM Telco Customer Churn describes a [fictional telco company](https://community.ibm.com/community/user/businessanalytics/blogs/steven-macko/2019/07/11/telco-customer-churn-1113)
+> that IBM created for teaching. Every result here describes that sample, not a real operator.
+
 - **Model:** XGBoost tuned with Optuna, selected against logistic regression on cross-validated log loss, then probability-calibrated.
 - **Decision:** expected-value targeting with a cost-sensitive threshold.
 - **Explanations:** exact SHAP values, with correlated features grouped.
@@ -109,9 +115,12 @@ docker build -t telco-churn . && docker run -p 8000:8000 telco-churn
 
 ## Limitations
 
+- **Fictional data.** IBM's teaching sample, not a real operator's customers.
 - **Single static snapshot.** Temporal validation is impossible, and the drift section is a simulation, not an observation.
 - **Assumed economics.** The campaign economics are assumptions; the sensitivity grid shows how much the conclusions depend on them.
 - **Churn, not uplift.** The model predicts churn, not whether an offer *changes* behaviour. The right next step is an uplift model trained on A/B data from a real campaign.
 - **SHAP is not causal.** It explains the model, not the customer.
+- **Bit-for-bit retraining only on the same platform.** Retraining on Linux CI picked different Optuna hyperparameters than on macOS (floating-point differences steer the search). The result was statistically identical (ROC-AUC difference +0.0002 [−0.0008, +0.0012]), and the gate judged it so. This is why the deployed artifact is the committed, tested file, never a rebuild.
+- **Free hosting.** The demo sleeps when idle, so the first request after a pause is slow; the benchmark figures come from a local machine, not from Render.
 
-Data: [IBM Telco Customer Churn](https://github.com/IBM/telco-customer-churn-on-icp4d), 7,043 customers.
+Data: [IBM Telco Customer Churn](https://github.com/IBM/telco-customer-churn-on-icp4d), 7,043 customers of a fictional company.
